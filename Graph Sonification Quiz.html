@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -80,7 +81,6 @@
 </head>
 
 <body>
-
 <main>
 
     <h1>Graph Sonification Quiz</h1>
@@ -88,7 +88,6 @@
     <p id="progress" aria-live="polite"></p>
 
     <section id="quizArea" class="quiz-box">
-
         <h2>Listen to the audio</h2>
 
         <p>
@@ -103,7 +102,6 @@
         <h2>Choose the equation type</h2>
 
         <div class="answers">
-
             <button type="button" data-answer="Linear">
                 Linear
             </button>
@@ -123,7 +121,6 @@
             <button type="button" data-answer="Trigonometric">
                 Trigonometric
             </button>
-
         </div>
 
         <p id="feedback" aria-live="assertive"></p>
@@ -134,225 +131,278 @@
             class="hidden">
             Next question
         </button>
-
     </section>
 
     <section id="finished" class="quiz-box hidden">
-
         <h2>Quiz complete</h2>
 
         <p>
             Thank you for completing the quiz.
         </p>
 
-        <p>
-            Your results have been recorded.
+        <p id="saveStatus" aria-live="polite">
+            Sending your results...
         </p>
 
+        <button
+            id="downloadResultsButton"
+            type="button"
+            class="hidden">
+            Download my results as CSV
+        </button>
     </section>
 
 </main>
 
+
 <script>
-
 const questions = [
-
     {
         audio: "audio/log/y=2x+3 log.wav",
         answer: "Linear"
     },
-
     {
         audio: "audio/log/y=abs(x-2)+1 log.wav",
         answer: "Absolute value"
     },
-
     {
         audio: "audio/log/y=sin(x) log.wav",
         answer: "Trigonometric"
     },
-
     {
         audio: "audio/log/y=x^2−4x+3 log.wav",
         answer: "Quadratic"
     },
-
     {
         audio: "audio/log/y=x^3−3x^2+2 log.wav",
         answer: "Cubic"
     },
-
     {
         audio: "audio/linear/y=2x+3 linear.wav",
         answer: "Linear"
     },
-
     {
         audio: "audio/linear/y=abs(x-2)+1 linear.wav",
         answer: "Absolute value"
     },
-
     {
         audio: "audio/linear/y=sin(x) linear.wav",
         answer: "Trigonometric"
     },
-
     {
         audio: "audio/linear/y=x^2−4x+3 linear.wav",
         answer: "Quadratic"
     },
-
     {
         audio: "audio/linear/y=x^3−3x^2+2 linear.wav",
         answer: "Cubic"
     }
-
 ];
 
 let currentQuestion = 0;
-
 let score = 0;
-
 let answered = false;
 
-const audio =
-    document.getElementById("audio");
+// Generate a different participant ID for each quiz attempt.
+const participantId = (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : "participant-" + Date.now() + "-" +
+      Math.random().toString(16).slice(2);
 
-const progress =
-    document.getElementById("progress");
+// Store the answers in this browser for the CSV fallback.
+const responses = [];
 
-const feedback =
-    document.getElementById("feedback");
-
-const nextButton =
-    document.getElementById("nextButton");
-
-const quizArea =
-    document.getElementById("quizArea");
-
-const finished =
-    document.getElementById("finished");
-
-const answerButtons =
-    document.querySelectorAll("[data-answer]");
+const audio = document.getElementById("audio");
+const progress = document.getElementById("progress");
+const feedback = document.getElementById("feedback");
+const nextButton = document.getElementById("nextButton");
+const quizArea = document.getElementById("quizArea");
+const finished = document.getElementById("finished");
+const answerButtons = document.querySelectorAll("[data-answer]");
 
 function loadQuestion() {
-
     answered = false;
 
     progress.textContent =
-        "Question " +
-        (currentQuestion + 1) +
-        " of " +
-        questions.length;
+        "Question " + (currentQuestion + 1) +
+        " of " + questions.length;
 
-    audio.src =
-        questions[currentQuestion].audio;
-
+    audio.src = questions[currentQuestion].audio;
     audio.load();
 
     feedback.textContent = "";
-
     nextButton.classList.add("hidden");
 
     answerButtons.forEach(function(button) {
-
         button.disabled = false;
-
     });
 
     audio.focus();
-
 }
 
 function checkAnswer(selectedAnswer) {
-
     if (answered) {
-
         return;
-
     }
 
     answered = true;
 
-    const correctAnswer =
-        questions[currentQuestion].answer;
+    const correctAnswer = questions[currentQuestion].answer;
+    const isCorrect = selectedAnswer === correctAnswer;
 
-    if (selectedAnswer === correctAnswer) {
-
+    if (isCorrect) {
         score++;
-
     }
 
-    answerButtons.forEach(function(button) {
-
-        button.disabled = true;
-
+    responses.push({
+        questionNumber: currentQuestion + 1,
+        audioFile: questions[currentQuestion].audio,
+        selectedAnswer: selectedAnswer,
+        correctAnswer: correctAnswer,
+        isCorrect: isCorrect
     });
 
-    feedback.textContent =
-        "Answer recorded.";
+    answerButtons.forEach(function(button) {
+        button.disabled = true;
+    });
+
+    feedback.textContent = "Answer recorded.";
 
     nextButton.classList.remove("hidden");
-
     nextButton.focus();
-
 }
 
 function nextQuestion() {
-
     currentQuestion++;
 
     if (currentQuestion >= questions.length) {
-
         finishQuiz();
-
     } else {
-
         loadQuestion();
-
     }
-
 }
 
-function finishQuiz() {
-
+async function finishQuiz() {
     quizArea.classList.add("hidden");
-
     finished.classList.remove("hidden");
 
-    console.log(
-        "Final score:",
-        score,
-        "out of",
-        questions.length
-    );
+    const saveStatus = document.getElementById("saveStatus");
+    const downloadResultsButton =
+        document.getElementById("downloadResultsButton");
 
+    saveStatus.textContent = "Sending your results...";
+
+    // Only these three values are sent to the database.
+    const results = {
+        participantId: participantId,
+        score: score,
+        totalQuestions: questions.length
+    };
+
+    // Keep a local copy in case the server cannot be reached.
+    try {
+        localStorage.setItem(
+            "graphSonificationQuizLastResult",
+            JSON.stringify(results)
+        );
+    } catch (error) {
+        // Submission can still continue if local storage is unavailable.
+    }
+
+    // Provide a CSV backup option.
+    downloadResultsButton.classList.remove("hidden");
+
+    downloadResultsButton.onclick = function() {
+        const csvRows = [
+            [
+                "Participant ID",
+                "Question",
+                "Audio file",
+                "Selected answer",
+                "Correct answer",
+                "Correct",
+                "Final score",
+                "Total questions"
+            ],
+            ...responses.map(function(response) {
+                return [
+                    participantId,
+                    response.questionNumber,
+                    response.audioFile,
+                    response.selectedAnswer,
+                    response.correctAnswer,
+                    response.isCorrect ? "Yes" : "No",
+                    score,
+                    questions.length
+                ];
+            })
+        ];
+
+        const csv = csvRows.map(function(row) {
+            return row.map(function(value) {
+                return '"' + String(value).replace(/"/g, '""') + '"';
+            }).join(",");
+        }).join("\r\n");
+
+        const blob = new Blob(
+            [csv],
+            { type: "text/csv;charset=utf-8;" }
+        );
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = "graph-sonification-quiz-results.csv";
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        URL.revokeObjectURL(url);
+    };
+
+    // Send the final score to the Vercel API.
+    try {
+        const response = await fetch("/api/responses", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(results)
+        });
+
+        if (!response.ok) {
+            throw new Error("The server could not save the results.");
+        }
+
+        saveStatus.textContent =
+            "Your score was submitted successfully. Your participant ID is " +
+            participantId +
+            ". Thank you for participating.";
+    } catch (error) {
+        saveStatus.textContent =
+            "We could not send your results to the database. " +
+            "You can download a CSV copy using the button below " +
+            "and send it to the researcher.";
+
+        console.error("Quiz submission failed:", error);
+    }
+
+    console.log("Final score:", score, "out of", questions.length);
 }
 
 answerButtons.forEach(function(button) {
-
-    button.addEventListener(
-        "click",
-        function() {
-
-            checkAnswer(
-                button.dataset.answer
-            );
-
-        }
-    );
-
+    button.addEventListener("click", function() {
+        checkAnswer(button.dataset.answer);
+    });
 });
 
-nextButton.addEventListener(
-    "click",
-    nextQuestion
-);
+nextButton.addEventListener("click", nextQuestion);
 
 loadQuestion();
-
 </script>
+
 
 </body>
 </html>
