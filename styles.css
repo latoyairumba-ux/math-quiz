@@ -1,3 +1,4 @@
+<<<<<<< HEAD
     /* styles.css */
 
 body {
@@ -19,3 +20,26 @@ h2 {
   font-weight:  ;
   color:  ;
 }
+=======
+    /* styles.css */
+
+body {
+  background-color:  ;
+  color:  ;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  padding: 50px;
+}   
+
+h1 {
+  font-size:  ;
+  margin-bottom: ;
+  color:  ;
+}
+
+h2 {
+  font-size:  ;
+  font-weight:  ;
+  color:  ;
+}
+>>>>>>> b45662604bee8e63861c6ebafef470253550e639
