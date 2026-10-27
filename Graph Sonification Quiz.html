@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -154,47 +153,46 @@
 
 </main>
 
-
 <script>
 const questions = [
     {
-        audio: "audio/log/y=2x+3 log.wav",
+        audio: "./audio/log/y_2x_3_log.wav",
         answer: "Linear"
     },
     {
-        audio: "audio/log/y=abs(x-2)+1 log.wav",
+        audio: "./audio/log/y_x-2_1_log.wav",
         answer: "Absolute value"
     },
     {
-        audio: "audio/log/y=sin(x) log.wav",
+        audio: "./audio/log/y_sinx_log.wav",
         answer: "Trigonometric"
     },
     {
-        audio: "audio/log/y=x^2−4x+3 log.wav",
+        audio: "./audio/log/y_x2_4x_3_log.wav",
         answer: "Quadratic"
     },
     {
-        audio: "audio/log/y=x^3−3x^2+2 log.wav",
+        audio: "./audio/log/y_x3_3x2_2_log.wav",
         answer: "Cubic"
     },
     {
-        audio: "audio/linear/y=2x+3 linear.wav",
+        audio: "./audio/linear/y_2x_3_linear.wav",
         answer: "Linear"
     },
     {
-        audio: "audio/linear/y=abs(x-2)+1 linear.wav",
+        audio: "./audio/linear/y_x-2_1_linear.wav",
         answer: "Absolute value"
     },
     {
-        audio: "audio/linear/y=sin(x) linear.wav",
+        audio: "./audio/linear/y_sinx_linear.wav",
         answer: "Trigonometric"
     },
     {
-        audio: "audio/linear/y=x^2−4x+3 linear.wav",
+        audio: "./audio/linear/y_x2_4x_3_linear.wav",
         answer: "Quadratic"
     },
     {
-        audio: "audio/linear/y=x^3−3x^2+2 linear.wav",
+        audio: "./audio/linear/y_x3_3x2_2_linear.wav",
         answer: "Cubic"
     }
 ];
@@ -203,13 +201,11 @@ let currentQuestion = 0;
 let score = 0;
 let answered = false;
 
-// Generate a different participant ID for each quiz attempt.
 const participantId = (window.crypto && crypto.randomUUID)
     ? crypto.randomUUID()
     : "participant-" + Date.now() + "-" +
       Math.random().toString(16).slice(2);
 
-// Store the answers in this browser for the CSV fallback.
 const responses = [];
 
 const audio = document.getElementById("audio");
@@ -292,24 +288,20 @@ async function finishQuiz() {
 
     saveStatus.textContent = "Sending your results...";
 
-    // Only these three values are sent to the database.
     const results = {
         participantId: participantId,
         score: score,
         totalQuestions: questions.length
     };
 
-    // Keep a local copy in case the server cannot be reached.
     try {
         localStorage.setItem(
             "graphSonificationQuizLastResult",
             JSON.stringify(results)
         );
     } catch (error) {
-        // Submission can still continue if local storage is unavailable.
     }
 
-    // Provide a CSV backup option.
     downloadResultsButton.classList.remove("hidden");
 
     downloadResultsButton.onclick = function() {
@@ -362,7 +354,6 @@ async function finishQuiz() {
         URL.revokeObjectURL(url);
     };
 
-    // Send the final score to the Vercel API.
     try {
         const response = await fetch("/api/responses", {
             method: "POST",
@@ -405,5 +396,4 @@ loadQuestion();
 
 
 </body>
-</html> 
-
+</html>
