@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -81,7 +82,6 @@
 
 <body>
 <main>
-
     <h1>Graph Sonification Quiz</h1>
 
     <p id="progress" aria-live="polite"></p>
@@ -101,33 +101,16 @@
         <h2>Choose the equation type</h2>
 
         <div class="answers">
-            <button type="button" data-answer="Linear">
-                Linear
-            </button>
-
-            <button type="button" data-answer="Quadratic">
-                Quadratic
-            </button>
-
-            <button type="button" data-answer="Cubic">
-                Cubic
-            </button>
-
-            <button type="button" data-answer="Absolute value">
-                Absolute value
-            </button>
-
-            <button type="button" data-answer="Trigonometric">
-                Trigonometric
-            </button>
+            <button type="button" data-answer="Linear">Linear</button>
+            <button type="button" data-answer="Quadratic">Quadratic</button>
+            <button type="button" data-answer="Cubic">Cubic</button>
+            <button type="button" data-answer="Absolute value">Absolute value</button>
+            <button type="button" data-answer="Trigonometric">Trigonometric</button>
         </div>
 
         <p id="feedback" aria-live="assertive"></p>
 
-        <button
-            id="nextButton"
-            type="button"
-            class="hidden">
+        <button id="nextButton" type="button" class="hidden">
             Next question
         </button>
     </section>
@@ -135,78 +118,69 @@
     <section id="finished" class="quiz-box hidden">
         <h2>Quiz complete</h2>
 
-        <p>
-            Thank you for completing the quiz.
-        </p>
+        <p>Thank you for completing the quiz.</p>
 
-        <p id="saveStatus" aria-live="polite">
-            Sending your results...
+        <p id="saveStatus" role="status" aria-live="polite">
+            Your results are being saved.
         </p>
-
-        <button
-            id="downloadResultsButton"
-            type="button"
-            class="hidden">
-            Download my results as CSV
-        </button>
     </section>
-
 </main>
 
 <script>
+"use strict";
+
+// Each participant receives a random ID.
+const participantId = crypto.randomUUID();
+
+// The first five questions use logarithmic mapping.
+// The last five questions use linear mapping.
 const questions = [
     {
-        audio: "./audio/log/y_2x_3_log.wav",
+        audio: "audio/log/y=2x+3 log.wav",
         answer: "Linear"
     },
     {
-        audio: "./audio/log/y_x-2_1_log.wav",
+        audio: "audio/log/y=abs(x-2)+1 log.wav",
         answer: "Absolute value"
     },
     {
-        audio: "./audio/log/y_sinx_log.wav",
+        audio: "audio/log/y=sin(x) log.wav",
         answer: "Trigonometric"
     },
     {
-        audio: "./audio/log/y_x2_4x_3_log.wav",
+        audio: "audio/log/y=x^2−4x+3 log.wav",
         answer: "Quadratic"
     },
     {
-        audio: "./audio/log/y_x3_3x2_2_log.wav",
+        audio: "audio/log/y=x^3−3x^2+2 log.wav",
         answer: "Cubic"
     },
     {
-        audio: "./audio/linear/y_2x_3_linear.wav",
+        audio: "audio/linear/y=2x+3 linear.wav",
         answer: "Linear"
     },
     {
-        audio: "./audio/linear/y_x-2_1_linear.wav",
+        audio: "audio/linear/y=abs(x-2)+1 linear.wav",
         answer: "Absolute value"
     },
     {
-        audio: "./audio/linear/y_sinx_linear.wav",
+        audio: "audio/linear/y=sin(x) linear.wav",
         answer: "Trigonometric"
     },
     {
-        audio: "./audio/linear/y_x2_4x_3_linear.wav",
+        audio: "audio/linear/y=x^2−4x+3 linear.wav",
         answer: "Quadratic"
     },
     {
-        audio: "./audio/linear/y_x3_3x2_2_linear.wav",
+        audio: "audio/linear/y=x^3−3x^2+2 linear.wav",
         answer: "Cubic"
     }
 ];
 
 let currentQuestion = 0;
-let score = 0;
+let logScore = 0;
+let linearScore = 0;
 let answered = false;
-
-const participantId = (window.crypto && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : "participant-" + Date.now() + "-" +
-      Math.random().toString(16).slice(2);
-
-const responses = [];
 
 const audio = document.getElementById("audio");
 const progress = document.getElementById("progress");
@@ -214,6 +188,8 @@ const feedback = document.getElementById("feedback");
 const nextButton = document.getElementById("nextButton");
 const quizArea = document.getElementById("quizArea");
 const finished = document.getElementById("finished");
+const saveStatus = document.getElementById("saveStatus");
+
 const answerButtons = document.querySelectorAll("[data-answer]");
 
 function loadQuestion() {
@@ -244,19 +220,14 @@ function checkAnswer(selectedAnswer) {
     answered = true;
 
     const correctAnswer = questions[currentQuestion].answer;
-    const isCorrect = selectedAnswer === correctAnswer;
 
-    if (isCorrect) {
-        score++;
+    if (selectedAnswer === correctAnswer) {
+        if (currentQuestion < 5) {
+            logScore++;
+        } else {
+            linearScore++;
+        }
     }
-
-    responses.push({
-        questionNumber: currentQuestion + 1,
-        audioFile: questions[currentQuestion].audio,
-        selectedAnswer: selectedAnswer,
-        correctAnswer: correctAnswer,
-        isCorrect: isCorrect
-    });
 
     answerButtons.forEach(function(button) {
         button.disabled = true;
@@ -282,105 +253,44 @@ async function finishQuiz() {
     quizArea.classList.add("hidden");
     finished.classList.remove("hidden");
 
-    const saveStatus = document.getElementById("saveStatus");
-    const downloadResultsButton =
-        document.getElementById("downloadResultsButton");
+    progress.textContent = "Quiz complete.";
+    saveStatus.textContent = "Saving your results. Please wait.";
 
-    saveStatus.textContent = "Sending your results...";
-
-    const results = {
-        participantId: participantId,
-        score: score,
-        totalQuestions: questions.length
-    };
+    finished.querySelector("h2").focus();
 
     try {
-        localStorage.setItem(
-            "graphSonificationQuizLastResult",
-            JSON.stringify(results)
-        );
-    } catch (error) {
-    }
-
-    downloadResultsButton.classList.remove("hidden");
-
-    downloadResultsButton.onclick = function() {
-        const csvRows = [
-            [
-                "Participant ID",
-                "Question",
-                "Audio file",
-                "Selected answer",
-                "Correct answer",
-                "Correct",
-                "Final score",
-                "Total questions"
-            ],
-            ...responses.map(function(response) {
-                return [
-                    participantId,
-                    response.questionNumber,
-                    response.audioFile,
-                    response.selectedAnswer,
-                    response.correctAnswer,
-                    response.isCorrect ? "Yes" : "No",
-                    score,
-                    questions.length
-                ];
-            })
-        ];
-
-        const csv = csvRows.map(function(row) {
-            return row.map(function(value) {
-                return '"' + String(value).replace(/"/g, '""') + '"';
-            }).join(",");
-        }).join("\r\n");
-
-        const blob = new Blob(
-            [csv],
-            { type: "text/csv;charset=utf-8;" }
-        );
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-
-        link.href = url;
-        link.download = "graph-sonification-quiz-results.csv";
-
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-
-        URL.revokeObjectURL(url);
-    };
-
-    try {
-        const response = await fetch("/api/responses", {
+        const response = await fetch("/api/submit-results", {
             method: "POST",
+
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(results)
+
+            body: JSON.stringify({
+                participantId: participantId,
+                logScore: logScore,
+                linearScore: linearScore,
+                totalQuestions: questions.length
+            })
         });
 
+        const result = await response.json();
+
         if (!response.ok) {
-            throw new Error("The server could not save the results.");
+            throw new Error(
+                result.error || "Unable to save results."
+            );
         }
 
         saveStatus.textContent =
-            "Your score was submitted successfully. Your participant ID is " +
-            participantId +
-            ". Thank you for participating.";
+            "Your results have been recorded successfully.";
+
     } catch (error) {
+        console.error("Saving results failed:", error);
+
         saveStatus.textContent =
-            "We could not send your results to the database. " +
-            "You can download a CSV copy using the button below " +
-            "and send it to the researcher.";
-
-        console.error("Quiz submission failed:", error);
+            "Your results could not be saved. Please contact the researcher.";
     }
-
-    console.log("Final score:", score, "out of", questions.length);
 }
 
 answerButtons.forEach(function(button) {
@@ -393,7 +303,5 @@ nextButton.addEventListener("click", nextQuestion);
 
 loadQuestion();
 </script>
-
-
 </body>
 </html>
